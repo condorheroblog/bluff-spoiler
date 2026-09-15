@@ -15,3 +15,4 @@ node_modules
 dist
 content
 demo/dist
+coverage

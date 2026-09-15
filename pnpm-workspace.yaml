@@ -1,9 +1,15 @@
+minimumReleaseAgeExcludePrune: true
+minimumReleaseAgeExclude:
+  - bumpp@12.3.0
+
+trustPolicy: no-downgrade
+shellEmulator: true
+
+packages:
+  - .
+  - playground/*
+
 allowBuilds:
   esbuild: true
   node-pty: true
   simple-git-hooks: true
-minimumReleaseAgeExclude:
-  - bumpp@12.3.0
-packages:
-  - .
-  - playground/*

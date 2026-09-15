@@ -3,7 +3,7 @@
 	"type": "module",
 	"version": "0.0.0",
 	"private": false,
-	"description": "",
+	"description": "A dependency-free Web Component that hides sensitive inline content behind an animated particle field, with line-wrap support.",
 	"author": {
 		"name": "Condor Hero",
 		"email": "love2xinwei@gmail.com"
@@ -17,8 +17,23 @@
 	"bugs": {
 		"url": "https://github.com/condorheroblog/bluff-spoiler/issues"
 	},
-	"keywords": [],
-	"sideEffects": false,
+	"keywords": [
+		"web-components",
+		"customelements",
+		"spoiler",
+		"particles",
+		"canvas",
+		"privacy",
+		"sensitive-data",
+		"blur",
+		"ui"
+	],
+	"sideEffects": [
+		"./dist/index.mjs",
+		"./dist/index.cjs",
+		"./dist/index.iife.js",
+		"**/*.css"
+	],
 	"exports": {
 		".": {
 			"import": {
@@ -29,18 +44,23 @@
 				"types": "./dist/index.d.cts",
 				"default": "./dist/index.cjs"
 			}
-		}
+		},
+		"./package.json": "./package.json"
 	},
 	"main": "dist/index.cjs",
 	"module": "dist/index.mjs",
+	"unpkg": "dist/index.iife.js",
+	"jsdelivr": "dist/index.iife.js",
 	"files": [
 		"dist/*"
 	],
 	"scripts": {
 		"prepare": "simple-git-hooks",
 		"prepublishOnly": "npm run build",
-		"build": "rm -rf dist && tsc --noEmit && vite build",
+		"build": "vite build",
 		"test": "vitest",
+		"test:run": "vitest run",
+		"coverage": "vitest run --coverage",
 		"lint": "eslint .",
 		"lint:fix": "eslint . --fix",
 		"typecheck": "tsc --noEmit",
@@ -51,9 +71,11 @@
 		"@eslint-react/eslint-plugin": "^5.18.7",
 		"@microsoft/api-extractor": "^7.59.0",
 		"@types/node": "^26.4.1",
+		"@vitest/coverage-v8": "4.1.11",
 		"bumpp": "^12.3.0",
 		"eslint-plugin-react-hooks": "^7.1.1",
 		"eslint-plugin-react-refresh": "^0.5.6",
+		"jsdom": "^30.0.1",
 		"lint-staged": "^17.5.0",
 		"simple-git-hooks": "^2.14.0",
 		"typescript": "^6.0.3",

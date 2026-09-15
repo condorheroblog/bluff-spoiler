@@ -1,3 +1,4 @@
+import type { Plugin } from "vite";
 import { copyFileSync, existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -39,6 +40,20 @@ function copyDtsFiles(dir: string): void {
 	}
 }
 
+// @zh 仅压缩 IIFE 浏览器直连产物；ES/CJS 产物保持可读，便于调试。
+// @en Minify only the IIFE browser-ready output; keep ES/CJS outputs readable.
+function minifyIifeOnly(): Plugin {
+	return {
+		name: "minify-iife-only",
+		outputOptions(options) {
+			return {
+				...options,
+				minify: options.format === "iife",
+			};
+		},
+	};
+}
+
 export default defineConfig({
 	build: {
 		emptyOutDir: true,
@@ -46,33 +61,31 @@ export default defineConfig({
 		sourcemap: true,
 
 		lib: {
-			// @zh 单入口：React 适配层；无框架引擎由独立包 scroll-active-toc 提供（作为依赖外置）
-			// @en Single entry: the React adapter; the framework-agnostic engine ships as the separate scroll-active-toc package (externalized as a dependency)
+			// @zh 单入口：零依赖的 Web Components 自定义元素。
+			// @en Single entry: the dependency-free Web Components custom element.
 			entry: {
 				index: "src/index.ts",
 			},
-			name: "bluff-spoiler",
-			formats: ["es", "cjs"],
+			name: "BluffSpoiler",
+			formats: ["es", "cjs", "iife"],
 			fileName: (format, entryName = "index") => {
 				if (format === "es")
 					return `${entryName}.mjs`;
 				if (format === "cjs")
 					return `${entryName}.cjs`;
+				if (format === "iife")
+					return `${entryName}.iife.js`;
 				return `${entryName}.${format}`;
 			},
 		},
 		rolldownOptions: {
-			// @zh 外置 react（含 jsx-runtime，Devtools.ts 的 automatic JSX 运行时）与引擎包 scroll-active-toc，
-			// 它们均由包的依赖在运行时提供，不会被打进产物。
-			// @en Externalize react (including jsx-runtime, the automatic JSX runtime used by Devtools.ts)
-			// and the scroll-active-toc engine package; both are provided at runtime by package dependencies.
-			external: [/^react(\/.*)?$/, /^scroll-active-toc(\/.*)?$/],
 			output: {
 				postBanner: banner,
 			},
 		},
 	},
 	plugins: [
+		minifyIifeOnly(),
 		dts({
 			bundleTypes: true,
 			afterBuild: () => {

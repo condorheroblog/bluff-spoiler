@@ -13,6 +13,10 @@
 
 Live Demo: https://condorheroblog.github.io/bluff-spoiler/
 
+> Description
+
+**English** | [中文](https://github.com/condorheroblog/bluff-spoiler/blob/main/README.zh-CN.md)
+
 ## License
 
 [MIT](https://github.com/condorheroblog/bluff-spoiler/blob/main/LICENSE) License © 2026-Present [Condor Hero](https://github.com/condorheroblog)
