@@ -1,0 +1,9 @@
+allowBuilds:
+  esbuild: true
+  node-pty: true
+  simple-git-hooks: true
+minimumReleaseAgeExclude:
+  - bumpp@12.3.0
+packages:
+  - .
+  - playground/*
