@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>getClientRects() vs getBoundingClientRect() 行内文本测量可视化</title>
+<style>
+  :root {
+    --client: #2563eb;
+    --client-bg: rgba(37, 99, 235, .13);
+    --bbox: #dc2626;
+    --bbox-bg: rgba(220, 38, 38, .06);
+    --hl: rgba(250, 204, 21, .4);
+    --ink: #0f172a;
+    --ink-2: #475569;
+    --ink-3: #94a3b8;
+    --line: #e2e8f0;
+    --card: #ffffff;
+    --bg: #f1f5f9;
+    --radius: 14px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+      "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1020px;
+    margin: 0 auto;
+    padding: 40px 20px 72px;
+  }
+
+  /* ---------- Header ---------- */
+  header.intro h1 {
+    margin: 0 0 10px;
+    font-size: clamp(24px, 4vw, 34px);
+    line-height: 1.25;
+    letter-spacing: -.02em;
+  }
+  header.intro h1 code {
+    font-size: .82em;
+    background: #eef2ff;
+    border: 1px solid #c7d2fe;
+    color: #3730a3;
+    padding: 2px 7px;
+    border-radius: 7px;
+  }
+  header.intro p {
+    margin: 0;
+    color: var(--ink-2);
+    font-size: 15px;
+    max-width: 760px;
+  }
+
+  /* ---------- Controls ---------- */
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 14px 22px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 14px 18px;
+    margin: 26px 0 18px;
+  }
+  .ctrl-group { display: flex; align-items: center; gap: 10px; }
+  .ctrl-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-3);
+    text-transform: uppercase;
+    letter-spacing: .06em;
+  }
+
+  .seg {
+    display: inline-flex;
+    background: #f1f5f9;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 3px;
+    gap: 2px;
+  }
+  .seg button {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink-2);
+    padding: 6px 13px;
+    border-radius: 8px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background .15s, color .15s, box-shadow .15s;
+  }
+  .seg button:hover { color: var(--ink); }
+  .seg button.is-active {
+    background: #fff;
+    color: var(--ink);
+    box-shadow: 0 1px 3px rgba(15, 23, 42, .12);
+  }
+
+  .switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink-2);
+    cursor: pointer;
+    user-select: none;
+  }
+  .switch input { position: absolute; opacity: 0; pointer-events: none; }
+  .switch .track {
+    width: 34px;
+    height: 19px;
+    border-radius: 999px;
+    background: #cbd5e1;
+    position: relative;
+    transition: background .18s;
+    flex: none;
+  }
+  .switch .track::after {
+    content: "";
+    position: absolute;
+    top: 2px; left: 2px;
+    width: 15px; height: 15px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(0,0,0,.25);
+    transition: transform .18s;
+  }
+  .switch input:checked + .track { background: var(--client); }
+  .switch.switch--bbox input:checked + .track { background: var(--bbox); }
+  .switch input:checked + .track::after { transform: translateX(15px); }
+  .switch input:focus-visible + .track { outline: 2px solid #93c5fd; outline-offset: 2px; }
+
+  .range-row { display: inline-flex; align-items: center; gap: 10px; }
+  input[type="range"] {
+    appearance: none;
+    width: 150px;
+    height: 4px;
+    border-radius: 999px;
+    background: #cbd5e1;
+    outline: none;
+    cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    appearance: none;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid var(--client);
+    box-shadow: 0 1px 3px rgba(15,23,42,.25);
+    cursor: pointer;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid var(--client);
+    cursor: pointer;
+  }
+  #widthValue {
+    font-variant-numeric: tabular-nums;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+    min-width: 46px;
+  }
+
+  /* ---------- Stage ---------- */
+  .stage-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 26px 24px 30px;
+  }
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 20px;
+    margin-bottom: 16px;
+    font-size: 12.5px;
+    color: var(--ink-2);
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .swatch {
+    width: 15px; height: 11px; border-radius: 3px;
+    border: 2px solid var(--client);
+    background: var(--client-bg);
+    flex: none;
+  }
+  .swatch--bbox { border-color: var(--bbox); border-style: dashed; background: var(--bbox-bg); }
+  .swatch--hl { border-color: #ca8a04; background: var(--hl); }
+
+  .stage {
+    position: relative;
+    border: 1px dashed #cbd5e1;
+    border-radius: 10px;
+    background:
+      linear-gradient(0deg, transparent 23px, rgba(148,163,184,.12) 24px),
+      #fcfdfe;
+    background-size: 100% 24px;
+    padding: 24px;
+    overflow: hidden;
+  }
+  .text-box {
+    margin: 0 auto;
+    width: 560px;
+    max-width: 100%;
+  }
+  .sample-text {
+    margin: 0;
+    font-size: 16.5px;
+    line-height: 2;
+    color: #1e293b;
+  }
+  .sample-text + .sample-text { margin-top: 10px; }
+
+  .target {
+    background: var(--hl);
+  }
+  .target--padded {
+    padding: 5px 12px;
+    margin: 0 4px;
+    border: 2px solid #7c3aed;
+    background: rgba(124, 58, 237, .1);
+  }
+  .target--block {
+    display: block;
+    margin: 12px 0;
+    padding: 12px 16px;
+    border: 2px solid #0f766e;
+    border-radius: 8px;
+    background: rgba(13, 148, 136, .08);
+  }
+
+  /* ---------- Overlay ---------- */
+  .overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  .rect-bbox,
+  .rect-client { position: absolute; }
+
+  .rect-bbox {
+    z-index: 1;
+    background: var(--bbox-bg);
+    border: 2px dashed var(--bbox);
+    border-radius: 2px;
+  }
+  .rect-bbox .tag {
+    position: absolute;
+    top: -22px; left: -2px;
+    background: var(--bbox);
+    color: #fff;
+    font-size: 10.5px;
+    font-weight: 600;
+    padding: 1px 7px;
+    border-radius: 5px 5px 5px 0;
+    white-space: nowrap;
+  }
+
+  .rect-client {
+    z-index: 2;
+    background: var(--client-bg);
+    border: 1.5px solid var(--client);
+    border-radius: 2px;
+    transition: background .12s, box-shadow .12s;
+  }
+  .rect-client .num {
+    position: absolute;
+    left: 3px; top: 2px;
+    min-width: 15px; height: 15px;
+    padding: 0 3px;
+    border-radius: 999px;
+    background: var(--client);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 15px;
+    text-align: center;
+  }
+  .rect-client.is-active {
+    background: rgba(37, 99, 235, .28);
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, .45);
+  }
+
+  .tip {
+    margin: 14px 2px 0;
+    font-size: 13px;
+    color: var(--ink-2);
+  }
+  .tip strong { color: var(--ink); }
+
+  /* ---------- Stats ---------- */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin: 18px 0;
+  }
+  .stat {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 13px 16px;
+  }
+  .stat .k { font-size: 12px; color: var(--ink-3); font-weight: 600; }
+  .stat .v {
+    font-size: 22px;
+    font-weight: 700;
+    margin-top: 2px;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -.01em;
+  }
+  .stat .v small { font-size: 12px; font-weight: 500; color: var(--ink-3); margin-left: 2px; }
+  .stat--client .v { color: var(--client); }
+  .stat--bbox .v { color: var(--bbox); }
+
+  /* ---------- Data panels ---------- */
+  .data {
+    display: grid;
+    grid-template-columns: 1.25fr 1fr;
+    gap: 16px;
+  }
+  .panel {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .panel h2 {
+    margin: 0;
+    padding: 14px 18px;
+    font-size: 14px;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    gap: 9px;
+  }
+  .panel h2 code {
+    font-size: 12.5px;
+    padding: 2px 7px;
+    border-radius: 6px;
+  }
+  .chip {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 999px;
+    margin-left: auto;
+  }
+  .chip--client { background: #dbeafe; color: #1d4ed8; }
+  .chip--bbox { background: #fee2e2; color: #b91c1c; }
+  .h2-client code { background: #dbeafe; color: #1d4ed8; }
+  .h2-bbox code { background: #fee2e2; color: #b91c1c; }
+
+  .rect-list {
+    max-height: 280px;
+    overflow-y: auto;
+  }
+  .rect-row,
+  .rect-head {
+    display: grid;
+    grid-template-columns: 44px repeat(4, 1fr);
+    gap: 4px;
+    padding: 8px 18px;
+    font-size: 12.5px;
+    font-variant-numeric: tabular-nums;
+    align-items: center;
+  }
+  .rect-head {
+    position: sticky;
+    top: 0;
+    background: #f8fafc;
+    color: var(--ink-3);
+    font-weight: 600;
+    font-size: 11.5px;
+    border-bottom: 1px solid var(--line);
+    z-index: 1;
+  }
+  .rect-row {
+    border-bottom: 1px solid #f1f5f9;
+    cursor: default;
+  }
+  .rect-row:last-child { border-bottom: 0; }
+  .rect-row:hover { background: #f8faff; }
+  .rect-row.is-hovered { background: #eff6ff; }
+  .rect-row .idx {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 19px; height: 19px;
+    border-radius: 999px;
+    background: var(--client);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .bbox-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    padding: 14px 18px 16px;
+    gap: 10px 18px;
+  }
+  .bbox-grid dt {
+    font-size: 11.5px;
+    color: var(--ink-3);
+    font-weight: 600;
+  }
+  .bbox-grid dd {
+    margin: 1px 0 0;
+    font-size: 15px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .panel-note {
+    margin: 0;
+    padding: 11px 18px 14px;
+    font-size: 12px;
+    color: var(--ink-3);
+    border-top: 1px solid #f1f5f9;
+  }
+
+  /* ---------- Explain ---------- */
+  .explain {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-top: 26px;
+  }
+  .explain .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 16px 18px;
+  }
+  .explain h3 {
+    margin: 0 0 7px;
+    font-size: 13.5px;
+  }
+  .explain h3 code { font-size: 12px; color: var(--client); }
+  .explain .card--bbox h3 code { color: var(--bbox); }
+  .explain p { margin: 0; font-size: 13px; color: var(--ink-2); }
+
+  footer.meta {
+    margin-top: 28px;
+    font-size: 12.5px;
+    color: var(--ink-3);
+    text-align: center;
+  }
+
+  @media (max-width: 760px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .data { grid-template-columns: 1fr; }
+    .explain { grid-template-columns: 1fr; }
+    .stage { padding: 22px 14px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="intro">
+    <h1><code>getClientRects()</code> 与 <code>getBoundingClientRect()</code> 测量可视化</h1>
+    <p>对行内文本而言，<strong>getClientRects() 为元素跨越的每一行返回一个矩形</strong>，而 <strong>getBoundingClientRect() 永远只返回一个包围所有矩形的最小矩形</strong>。切换场景、拖动宽度滑块，观察两者的差异。</p>
+  </header>
+
+  <div class="controls">
+    <div class="ctrl-group">
+      <span class="ctrl-label">场景</span>
+      <div class="seg" id="scenarioSeg">
+        <button type="button" data-scenario="multi" class="is-active">多行内联文本</button>
+        <button type="button" data-scenario="single">单行内联文本</button>
+        <button type="button" data-scenario="padded">padding / border</button>
+        <button type="button" data-scenario="block">块级元素</button>
+      </div>
+    </div>
+
+    <div class="ctrl-group">
+      <label class="switch">
+        <input type="checkbox" id="toggleClient" checked>
+        <span class="track"></span>getClientRects 逐行矩形
+      </label>
+      <label class="switch switch--bbox">
+        <input type="checkbox" id="toggleBBox" checked>
+        <span class="track"></span>getBoundingClientRect 包围盒
+      </label>
+    </div>
+
+    <div class="ctrl-group range-row">
+      <span class="ctrl-label">容器宽度</span>
+      <input type="range" id="widthSlider" min="280" max="860" step="10" value="560">
+      <span id="widthValue">560px</span>
+    </div>
+  </div>
+
+  <div class="stage-card">
+    <div class="legend">
+      <span><i class="swatch"></i>getClientRects()：每行一个矩形（编号顺序即行序）</span>
+      <span><i class="swatch swatch--bbox"></i>getBoundingClientRect()：单一包围盒（含行间与行尾空白）</span>
+      <span><i class="swatch swatch--hl"></i>黄色背景：目标行内元素自身（背景本身按行盒绘制）</span>
+    </div>
+
+    <div class="stage" id="stage">
+      <div class="text-box" id="textBox"><!-- 场景内容注入 --></div>
+      <div class="overlay" id="overlay"></div>
+    </div>
+
+    <p class="tip" id="tip"></p>
+  </div>
+
+  <div class="stats">
+    <div class="stat stat--client">
+      <div class="k">getClientRects() 矩形数量</div>
+      <div class="v"><span id="statCount">–</span><small>个</small></div>
+    </div>
+    <div class="stat stat--client">
+      <div class="k">逐行矩形面积合计 Σ(w×h)</div>
+      <div class="v"><span id="statSum">–</span><small>px²</small></div>
+    </div>
+    <div class="stat stat--bbox">
+      <div class="k">包围盒面积 w×h</div>
+      <div class="v"><span id="statArea">–</span><small>px²</small></div>
+    </div>
+    <div class="stat">
+      <div class="k">逐行面积 / 包围盒面积</div>
+      <div class="v" style="color:#0f766e"><span id="statRatio">–</span><small>%</small></div>
+    </div>
+  </div>
+
+  <div class="data">
+    <section class="panel">
+      <h2 class="h2-client">
+        <code>getClientRects()</code>
+        <span class="chip chip--client" id="rectCountChip">0 个 DOMRect</span>
+      </h2>
+      <div class="rect-head">
+        <span>#</span><span>x</span><span>y</span><span>width</span><span>height</span>
+      </div>
+      <div class="rect-list" id="rectList"></div>
+      <p class="panel-note">坐标相对于浏览器视口（滚动页面时数值实时变化），保留 1 位小数。</p>
+    </section>
+
+    <section class="panel">
+      <h2 class="h2-bbox">
+        <code>getBoundingClientRect()</code>
+        <span class="chip chip--bbox">1 个 DOMRect</span>
+      </h2>
+      <dl class="bbox-grid" id="bboxGrid"></dl>
+      <p class="panel-note">单一矩形：left/top 取所有行片段的最小值，right/bottom 取最大值，中间空白区域同样被包含。</p>
+    </section>
+  </div>
+
+  <div class="explain">
+    <div class="card">
+      <h3><code>getClientRects()</code></h3>
+      <p>返回 DOMRectList。<strong>行内元素</strong>每占据一个行盒（line box）就产生一个矩形，换行次数越多矩形越多；可用于逐行高亮、逐行粒子遮罩等精确到行的测量。</p>
+    </div>
+    <div class="card card--bbox">
+      <h3><code>getBoundingClientRect()</code></h3>
+      <p>返回单个 DOMRect，是元素 border-box 的整体包围盒。对跨行的行内元素，它会把行尾留白与行间隙也圈入，<strong>面积通常大于逐行矩形之和</strong>。</p>
+    </div>
+    <div class="card">
+      <h3>什么时候两者相同？</h3>
+      <p>单行内联文本、inline-block、块级元素（一般只有 1 个 border-box 片段）时，getClientRects() 只含一项，且与 getBoundingClientRect() 完全重合。</p>
+    </div>
+  </div>
+
+  <footer class="meta">
+    纯单文件 Demo，无任何外部依赖 · 监听 resize / scroll / ResizeObserver / 字体加载实时重测
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------------- 场景定义 ---------------- */
+  var SCENARIOS = {
+    multi: {
+      html:
+        '<p class="sample-text">下面段落中，黄色高亮的是一个普通行内元素 ' +
+        '<span class="target" id="target">getClientRects() 会为行内元素所跨越的每一行分别返回一个 DOMRect，' +
+        '文本换到第二行、第三行时，矩形的数量也会随之增加</span>，' +
+        '试着拖动上方的宽度滑块让段落重新排版。</p>'
+    },
+    single: {
+      html:
+        '<p class="sample-text">当行内元素只占据一行时：' +
+        '<span class="target" id="target">单行文本，只有 1 个矩形</span>' +
+        '——两个 API 的测量结果完全相同。</p>'
+    },
+    padded: {
+      html:
+        '<p class="sample-text">带 padding、margin 和 border 的行内元素同样按行片段测量：' +
+        '<span class="target target--padded" id="target">每一行片段都会带上自己的内边距与边框，' +
+        '注意观察每段矩形的高度以及左右边界与纯文本行的差异</span>，' +
+        '行内元素的上下 padding 不占据行高，但仍计入矩形。</p>'
+    },
+    block: {
+      html:
+        '<p class="sample-text">下面是一个块级元素：</p>' +
+        '<div class="target target--block" id="target">块级元素即使内部文字换了很多行，' +
+        'getClientRects() 通常也只返回一个矩形（元素只有一个 border-box 片段），' +
+        '与 getBoundingClientRect() 完全重合。</div>' +
+        '<p class="sample-text">拖动宽度滑块，可以验证两者始终重合。</p>'
+    }
+  };
+
+  /* ---------------- DOM ---------------- */
+  var stage = document.getElementById("stage");
+  var textBox = document.getElementById("textBox");
+  var overlay = document.getElementById("overlay");
+  var seg = document.getElementById("scenarioSeg");
+  var toggleClient = document.getElementById("toggleClient");
+  var toggleBBox = document.getElementById("toggleBBox");
+  var widthSlider = document.getElementById("widthSlider");
+  var widthValue = document.getElementById("widthValue");
+  var tip = document.getElementById("tip");
+  var rectList = document.getElementById("rectList");
+  var bboxGrid = document.getElementById("bboxGrid");
+  var rectCountChip = document.getElementById("rectCountChip");
+  var statCount = document.getElementById("statCount");
+  var statSum = document.getElementById("statSum");
+  var statArea = document.getElementById("statArea");
+  var statRatio = document.getElementById("statRatio");
+
+  var state = { scenario: "multi", showClient: true, showBBox: true, width: 560 };
+  var clientNodes = [];
+
+  /* ---------------- 工具 ---------------- */
+  function fmt(n) { return (Math.round(n * 10) / 10).toFixed(1); }
+  function fmtInt(n) { return String(Math.round(n)); }
+
+  function el(tag, className, text) {
+    var node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text != null) node.textContent = text;
+    return node;
+  }
+
+  /* ---------------- 绘制 + 数据 ---------------- */
+  function draw() {
+    var target = textBox.querySelector("#target");
+    overlay.innerHTML = "";
+    clientNodes = [];
+    if (!target) return;
+
+    var base = overlay.getBoundingClientRect();
+
+    var rawList = target.getClientRects();
+    var rects = [];
+    for (var i = 0; i < rawList.length; i++) {
+      var r = rawList[i];
+      if (r.width > 0 && r.height > 0) rects.push(r);
+    }
+    var bb = target.getBoundingClientRect();
+
+    function place(node, rect) {
+      node.style.left = (rect.left - base.left) + "px";
+      node.style.top = (rect.top - base.top) + "px";
+      node.style.width = rect.width + "px";
+      node.style.height = rect.height + "px";
+    }
+
+    /* 包围盒（先画，置于下层） */
+    if (state.showBBox && bb.width > 0 && bb.height > 0) {
+      var bboxNode = el("div", "rect-bbox");
+      bboxNode.appendChild(el("span", "tag", "getBoundingClientRect()"));
+      place(bboxNode, bb);
+      overlay.appendChild(bboxNode);
+    }
+
+    /* 逐行矩形 */
+    if (state.showClient) {
+      rects.forEach(function (rect, idx) {
+        var node = el("div", "rect-client");
+        node.appendChild(el("span", "num", String(idx + 1)));
+        place(node, rect);
+        overlay.appendChild(node);
+        clientNodes.push(node);
+      });
+    }
+
+    renderRectList(rects);
+    renderBBox(bb);
+    renderStats(rects, bb);
+    renderTip(rects);
+  }
+
+  function renderRectList(rects) {
+    rectList.innerHTML = "";
+    rectCountChip.textContent = rects.length + " 个 DOMRect";
+
+    rects.forEach(function (rect, idx) {
+      var row = el("div", "rect-row");
+      row.appendChild(el("span", null, ""));
+      row.firstChild.appendChild(el("span", "idx", String(idx + 1)));
+      row.appendChild(el("span", null, fmt(rect.x)));
+      row.appendChild(el("span", null, fmt(rect.y)));
+      row.appendChild(el("span", null, fmt(rect.width)));
+      row.appendChild(el("span", null, fmt(rect.height)));
+
+      row.addEventListener("mouseenter", function () {
+        row.classList.add("is-hovered");
+        if (clientNodes[idx]) clientNodes[idx].classList.add("is-active");
+      });
+      row.addEventListener("mouseleave", function () {
+        row.classList.remove("is-hovered");
+        if (clientNodes[idx]) clientNodes[idx].classList.remove("is-active");
+      });
+
+      rectList.appendChild(row);
+    });
+
+    if (rects.length === 0) {
+      var empty = el("div", "panel-note", "当前目标没有产生任何矩形。");
+      empty.style.borderTop = "0";
+      rectList.appendChild(empty);
+    }
+  }
+
+  function renderBBox(bb) {
+    bboxGrid.innerHTML = "";
+    var fields = [
+      ["x", fmt(bb.x)], ["y", fmt(bb.y)],
+      ["width", fmt(bb.width)], ["height", fmt(bb.height)],
+      ["left", fmt(bb.left)], ["top", fmt(bb.top)],
+      ["right", fmt(bb.right)], ["bottom", fmt(bb.bottom)]
+    ];
+    fields.forEach(function (pair) {
+      bboxGrid.appendChild(el("dt", null, pair[0]));
+      bboxGrid.appendChild(el("dd", null, pair[1]));
+    });
+  }
+
+  function renderStats(rects, bb) {
+    var sum = 0;
+    rects.forEach(function (r) { sum += r.width * r.height; });
+    var area = bb.width * bb.height;
+    var ratio = area > 0 ? (sum / area) * 100 : 100;
+    if (ratio > 100) ratio = 100;
+
+    statCount.textContent = String(rects.length);
+    statSum.textContent = fmtInt(sum);
+    statArea.textContent = fmtInt(area);
+    statRatio.textContent = fmt(ratio);
+  }
+
+  function renderTip(rects) {
+    if (rects.length > 1) {
+      tip.innerHTML =
+        '<strong>当前行内元素跨越了 ' + rects.length + ' 行 → getClientRects() 返回 ' +
+        rects.length + ' 个矩形</strong>，而红色虚线包围盒只有 1 个——' +
+        '行与行之间的行距间隙、每行末尾未用完的空白，全部被圈进了包围盒（见上方面积比）。';
+    } else {
+      tip.innerHTML =
+        '<strong>当前目标只产生 1 个矩形</strong>，getClientRects()[0] 与 ' +
+        'getBoundingClientRect() 的测量结果完全重合。';
+    }
+  }
+
+  /* ---------------- 场景 / 控件 ---------------- */
+  function applyScenario() {
+    textBox.innerHTML = SCENARIOS[state.scenario].html;
+    textBox.style.width = state.width + "px";
+    scheduleDraw();
+  }
+
+  seg.addEventListener("click", function (e) {
+    var btn = e.target.closest("button[data-scenario]");
+    if (!btn) return;
+    state.scenario = btn.getAttribute("data-scenario");
+    Array.prototype.forEach.call(seg.querySelectorAll("button"), function (b) {
+      b.classList.toggle("is-active", b === btn);
+    });
+    applyScenario();
+  });
+
+  toggleClient.addEventListener("change", function () {
+    state.showClient = toggleClient.checked;
+    draw();
+  });
+  toggleBBox.addEventListener("change", function () {
+    state.showBBox = toggleBBox.checked;
+    draw();
+  });
+
+  widthSlider.addEventListener("input", function () {
+    state.width = parseInt(widthSlider.value, 10);
+    widthValue.textContent = state.width + "px";
+    textBox.style.width = state.width + "px";
+    scheduleDraw();
+  });
+
+  /* ---------------- 实时重测 ---------------- */
+  var rafId = null;
+  function scheduleDraw() {
+    if (rafId !== null) return;
+    rafId = requestAnimationFrame(function () {
+      rafId = null;
+      draw();
+    });
+  }
+
+  window.addEventListener("resize", scheduleDraw, { passive: true });
+  window.addEventListener("scroll", scheduleDraw, { passive: true, capture: true });
+
+  if (typeof ResizeObserver !== "undefined") {
+    new ResizeObserver(scheduleDraw).observe(textBox);
+  }
+
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(scheduleDraw);
+  }
+
+  /* ---------------- 初始化 ---------------- */
+  applyScenario();
+  setTimeout(draw, 300);
+})();
+</script>
+</body>
+</html>
