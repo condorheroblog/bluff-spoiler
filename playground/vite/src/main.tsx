@@ -14,7 +14,7 @@ if (!container)
 
 createRoot(container).render(
 	<StrictMode>
-		<HashRouter basename={import.meta.env.BASE_URL}>
+		<HashRouter>
 			<App />
 		</HashRouter>
 	</StrictMode>,
