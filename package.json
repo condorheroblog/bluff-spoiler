@@ -1,7 +1,7 @@
 {
 	"name": "bluff-spoiler",
 	"type": "module",
-	"version": "0.0.0",
+	"version": "0.0.1",
 	"private": false,
 	"description": "A dependency-free Web Component that hides sensitive inline content behind an animated particle field, with line-wrap support.",
 	"author": {
