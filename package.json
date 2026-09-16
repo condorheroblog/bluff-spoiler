@@ -28,12 +28,6 @@
 		"blur",
 		"ui"
 	],
-	"sideEffects": [
-		"./dist/index.mjs",
-		"./dist/index.cjs",
-		"./dist/index.iife.js",
-		"**/*.css"
-	],
 	"exports": {
 		".": {
 			"import": {
