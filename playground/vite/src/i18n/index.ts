@@ -1,7 +1,7 @@
 import i18n from "i18next";
 import LanguageDetector from "i18next-browser-languagedetector";
 import { initReactI18next } from "react-i18next";
-import { resources } from "./resources";
+import { resources } from "./locales";
 
 export const supportedLanguages = ["en", "zh"] as const;
 export type AppLanguage = (typeof supportedLanguages)[number];

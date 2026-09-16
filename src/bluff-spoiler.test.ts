@@ -382,6 +382,33 @@ describe("bluff-spoiler element — inline layout and line wrapping", () => {
 		document.body.innerHTML = "";
 	});
 
+	it("anchors the layer at the last-flow fragment under writing-mode: vertical-rl", () => {
+		const element = mountSpoiler("枫落吴江冷");
+		// Columns progress right-to-left: getClientRects() lists the first
+		// column fragment first (right column, lower down) and the wrapped
+		// second-column fragment last (left column, at the top). The absolute
+		// containing block starts at (lastRect.left, firstRect.top).
+		element.style.writingMode = "vertical-rl";
+		mockClientRects(element, [
+			{ x: 38, y: 182, width: 21, height: 81 },
+			{ x: 0, y: 0, width: 21, height: 20 },
+		]);
+		rafTick();
+
+		const layer = getLayer(element);
+		// union box is 59x263; it must be pulled UP to the first-column anchor
+		expect(layer.style.width).toBe("59px");
+		expect(layer.style.height).toBe("263px");
+		expect(layer.style.left).toBe("0px");
+		expect(layer.style.top).toBe("-182px");
+		const canvases = [...layer.querySelectorAll("canvas")];
+		expect(canvases[0].style.left).toBe("38px");
+		expect(canvases[0].style.top).toBe("182px");
+		expect(canvases[1].style.left).toBe("0px");
+		expect(canvases[1].style.top).toBe("0px");
+		document.body.innerHTML = "";
+	});
+
 	it("ignores zero-area client rects", () => {
 		const element = mountSpoiler("");
 		mockClientRects(element, [{ x: 0, y: 0, width: 0, height: 0 }]);

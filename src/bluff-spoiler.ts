@@ -629,19 +629,31 @@ export class BluffSpoilerElement extends HTMLElement {
 		}));
 
 		// A `position: relative` inline host anchors the absolute containing
-		// block at its FIRST (topmost, then leftmost) line fragment rather
-		// than at the union box origin. With per-character wrapping a later
-		// line often starts further left than the first one, so the layer —
-		// sized to the union box — is shifted relative to that origin. The
-		// canvases inside keep non-negative union-relative positions, which
-		// guarantees particles are painted on every wrapped fragment.
-		const anchor = clientRects.reduce((acc, rect) => {
-			if (rect.top < acc.top || (rect.top === acc.top && rect.left < acc.left))
-				return rect;
-			return acc;
-		});
-		this.#layer.style.left = `${unionLeft - anchor.left}px`;
-		this.#layer.style.top = `${unionTop - anchor.top}px`;
+		// block at a line fragment rather than at the union box origin, so the
+		// union-sized layer must be shifted relative to that origin. The anchor
+		// fragment depends on the writing mode (derived empirically and from
+		// the CSS containing-block specification):
+		//   - horizontal-tb + ltr / vertical-lr: the first fragment in flow
+		//     order;
+		//   - horizontal-tb + rtl / vertical-rl (incl. sideways-*): the LAST
+		//     fragment in flow order on the inline axis, but the FIRST one on
+		//     the block axis — i.e. the physical top-left of the containing
+		//     block is (lastRect.left, firstRect.top).
+		// getClientRects() enumerates fragments in flow order. Using a plain
+		// "topmost then leftmost" pick here is what made vertical-rl masks
+		// escape the container (columns progress right-to-left).
+		const firstRect = clientRects[0];
+		const lastRect = clientRects[clientRects.length - 1];
+		const computed = getComputedStyle(this);
+		const webkitWritingMode = (computed as CSSStyleDeclaration & { webkitWritingMode?: string }).webkitWritingMode;
+		const writingMode = computed.writingMode ?? webkitWritingMode ?? "horizontal-tb";
+		const verticalRl = writingMode === "vertical-rl" || writingMode === "sideways-rl";
+		const verticalLr = writingMode === "vertical-lr" || writingMode === "sideways-lr";
+		const blockFlowReversed = verticalRl || (!verticalLr && computed.direction === "rtl");
+		const anchorLeft = blockFlowReversed ? lastRect.left : firstRect.left;
+		const anchorTop = firstRect.top;
+		this.#layer.style.left = `${unionLeft - anchorLeft}px`;
+		this.#layer.style.top = `${unionTop - anchorTop}px`;
 		this.#layer.style.width = `${hostRect.width}px`;
 		this.#layer.style.height = `${hostRect.height}px`;
 		this.#engine.setRects(fragments);

@@ -47,6 +47,43 @@ pre {
 	margin: 0 1px;
 }
 
+/* Every interactive surface shows a pointer hand (Tailwind's preflight
+   already covers <button>, this makes the contract explicit across links,
+   custom elements and form controls). */
+a[href],
+button,
+[role="button"],
+[role="switch"],
+label,
+select,
+summary,
+bluff-spoiler,
+input[type="checkbox"],
+input[type="radio"],
+input[type="range"],
+input[type="color"] {
+	cursor: pointer;
+}
+
+button:disabled,
+button[aria-disabled="true"],
+[role="switch"][aria-disabled="true"],
+input:disabled {
+	cursor: not-allowed;
+}
+
+/* Vertical (top-to-bottom, right-to-left) typography demo */
+.vertical-text {
+	writing-mode: vertical-rl;
+	text-orientation: mixed;
+	letter-spacing: 0.12em;
+	line-height: 2.1;
+}
+
+.vertical-text bluff-spoiler {
+	margin: 1px 0;
+}
+
 input[type="range"] {
 	accent-color: var(--brand);
 }

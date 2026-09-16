@@ -28,7 +28,7 @@ export function CodeBlock({ code, label, language = "html" }: CodeBlockProps) {
 				<button
 					type="button"
 					onClick={() => void copy()}
-					className="rounded-md px-2 py-1 font-mono text-xs text-slate-500 transition hover:bg-slate-100 hover:text-emerald-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-emerald-400"
+					className="cursor-pointer rounded-md px-2 py-1 font-mono text-xs text-slate-500 transition hover:bg-slate-100 hover:text-emerald-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-emerald-400"
 				>
 					{copied ? "✓" : "copy"}
 				</button>

@@ -34,7 +34,7 @@ export function ParticleControlPanel({ config, onChange, onReset }: ParticleCont
 				<button
 					type="button"
 					onClick={onReset}
-					className="rounded-md px-2 py-1 text-xs text-slate-400 transition hover:text-emerald-600 dark:hover:text-emerald-400"
+					className="cursor-pointer rounded-md px-2 py-1 text-xs text-slate-400 transition hover:text-emerald-600 dark:hover:text-emerald-400"
 				>
 					{t("playground.reset")}
 				</button>
@@ -54,7 +54,7 @@ export function ParticleControlPanel({ config, onChange, onReset }: ParticleCont
 						<select
 							value={config.shape}
 							onChange={event => onChange({ shape: event.target.value as ParticleShape })}
-							className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+							className="h-9 w-full cursor-pointer rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
 						>
 							{shapeOptions.map(shape => (
 								<option key={shape} value={shape}>
@@ -73,7 +73,7 @@ export function ParticleControlPanel({ config, onChange, onReset }: ParticleCont
 					<select
 						value={config.motion}
 						onChange={event => onChange({ motion: event.target.value as ParticleMotion })}
-						className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+						className="h-9 w-full cursor-pointer rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
 					>
 						{motionOptions.map(motion => (
 							<option key={motion} value={motion}>
@@ -105,7 +105,7 @@ export function ParticleControlPanel({ config, onChange, onReset }: ParticleCont
 							type="checkbox"
 							checked={config.autoCount}
 							onChange={event => onChange({ autoCount: event.target.checked })}
-							className="h-4 w-4 accent-emerald-500"
+							className="h-4 w-4 cursor-pointer accent-emerald-500"
 						/>
 						<span className="text-xs">{t("playground.countAuto")}</span>
 					</label>
@@ -213,7 +213,7 @@ export function ParticleControlPanel({ config, onChange, onReset }: ParticleCont
 						role="switch"
 						aria-checked={config.bloom}
 						onClick={() => onChange({ bloom: !config.bloom })}
-						className={`relative h-6 w-11 rounded-full transition ${
+						className={`relative h-6 w-11 cursor-pointer rounded-full transition ${
 							config.bloom ? "bg-emerald-500" : "bg-slate-300 dark:bg-slate-700"
 						}`}
 					>

@@ -1,9 +1,11 @@
-import type { ParticleShape } from "bluff-spoiler";
-import type { ReactElement } from "react";
+import type { BluffSpoilerToggleDetail, ParticleShape } from "bluff-spoiler";
+import { useEffect, useRef, useState } from "react";
+import type { ReactElement, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 import { BluffSpoiler } from "../components/bluff-spoiler";
 import { CodeBlock } from "../components/code-block";
+import { FrameworkTabs } from "../components/framework-tabs";
 import { REPOSITORY_URL } from "../components/github-link";
 import { ArrowRightIcon, GitHubIcon } from "../components/icons";
 import { Logo } from "../components/logo";
@@ -83,21 +85,26 @@ const shapeShowcase: Array<{ shape: ParticleShape, secret: string, bloom?: boole
 	{ shape: "diamond", secret: "diamond-secret", bloom: true },
 ];
 
-const snippetImport = `# npm
-npm install bluff-spoiler
+const creditCardData = {
+	en: { number: "4242 4242 4242 4242", holder: "ALICE WANG", expiry: "08/28", cvv: "123" },
+	zh: { number: "6222 0212 3456 7890", holder: "张三", expiry: "08/28", cvv: "826" },
+} as const;
 
-# pnpm
-pnpm add bluff-spoiler`;
+const verticalSecrets = {
+	en: ["BLACK JADE", "MAPLES OVER THE COLD RIVER"],
+	zh: ["玄甲军", "枫落吴江冷"],
+} as const;
 
-const snippetRegister = "import \"bluff-spoiler\"; // registers <bluff-spoiler>";
-
-const snippetHtml = `<!-- hidden by default, click to reveal -->
-用户名<bluff-spoiler>张三</bluff-spoiler>
-年龄<bluff-spoiler
-  particle-shape="diamond"
-  particle-bloom
-  particle-color="#34d399"
->130</bluff-spoiler>`;
+function CardField({ label, children }: { label: string, children: ReactNode }) {
+	return (
+		<div>
+			<p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200/55">
+				{label}
+			</p>
+			<p className="mt-1.5 font-mono text-sm tracking-wider text-white">{children}</p>
+		</div>
+	);
+}
 
 function escapeRegExp(value: string): string {
 	return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -117,9 +124,110 @@ el.addEventListener("hide", () => analytics.track("spoiler_hide"));
 // plain native click still works for custom logic
 el.addEventListener("click", () => { /* ... */ });`;
 
+const heroSegmentStyles = [
+	{ particleColor: "#1fa669", particleShape: "diamond", particleBloom: true },
+	{ particleColor: "#38bdf8", particleShape: "circle" },
+	{ particleColor: "#f59e0b", particleShape: "triangle" },
+] as const;
+
+// Auto-loop timeline within one cycle (ms): every segment starts visible,
+// is masked one by one ("encrypted"), then revealed again.
+const HERO_HIDE_AT = [900, 1600, 2300];
+const HERO_REVEAL_AT = [5600, 6300, 7000];
+const HERO_CYCLE_MS = 9600;
+
+/**
+ * Hero paragraph that demonstrates the component on itself: three phrases of
+ * the marketing copy are live spoilers, auto-playing an encrypt/reveal loop.
+ * Hovering pauses the loop; the first manual toggle hands control to the user.
+ */
+function HeroDescription() {
+	const { t } = useTranslation();
+	const [revealedStates, setRevealedStates] = useState<boolean[]>(() =>
+		window.matchMedia("(prefers-reduced-motion: reduce)").matches
+			? [false, false, false]
+			: [true, true, true],
+	);
+	const hoverRef = useRef(false);
+	const autoRef = useRef(true);
+	const elapsedRef = useRef(0);
+	const lastTickRef = useRef<number | null>(null);
+
+	useEffect(() => {
+		if (window.matchMedia("(prefers-reduced-motion: reduce)").matches)
+			return;
+
+		const timer = window.setInterval(() => {
+			if (document.hidden || hoverRef.current || !autoRef.current) {
+				lastTickRef.current = null;
+				return;
+			}
+			const now = performance.now();
+			if (lastTickRef.current !== null)
+				elapsedRef.current += now - lastTickRef.current;
+			lastTickRef.current = now;
+
+			const phase = elapsedRef.current % HERO_CYCLE_MS;
+			setRevealedStates((previous) => {
+				const next = HERO_HIDE_AT.map(
+					(hideAt, index) => !(phase >= hideAt && phase < HERO_REVEAL_AT[index]),
+				);
+				return next.every((value, index) => value === previous[index]) ? previous : next;
+			});
+		}, 100);
+
+		return () => window.clearInterval(timer);
+	}, []);
+
+	const handleToggle = (index: number, detail: BluffSpoilerToggleDetail) => {
+		if (detail.source === "api")
+			return;
+		autoRef.current = false;
+		setRevealedStates((previous) => {
+			if (previous[index] === detail.revealed)
+				return previous;
+			const next = [...previous];
+			next[index] = detail.revealed;
+			return next;
+		});
+	};
+
+	const spoiler = (index: number, secretKey: string) => (
+		<BluffSpoiler
+			{...heroSegmentStyles[index]}
+			particleTransition={600}
+			revealed={revealedStates[index]}
+			onToggle={detail => handleToggle(index, detail)}
+		>
+			{t(secretKey)}
+		</BluffSpoiler>
+	);
+
+	return (
+		<div>
+			<p
+				className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-slate-600 dark:text-slate-400"
+				onPointerEnter={() => { hoverRef.current = true; }}
+				onPointerLeave={() => { hoverRef.current = false; }}
+			>
+				{t("hero.descriptionPre")}
+				{spoiler(0, "hero.secretSensitive")}
+				{t("hero.descriptionMid1")}
+				{spoiler(1, "hero.secretInvisible")}
+				{t("hero.descriptionMid2")}
+				{spoiler(2, "hero.secretAction")}
+				{t("hero.descriptionPost")}
+			</p>
+			<p className="mt-3 text-xs text-slate-400">{t("hero.autoHint")}</p>
+		</div>
+	);
+}
+
 export function HomePage() {
 	const { t, i18n } = useTranslation();
 	const zh = i18n.resolvedLanguage?.startsWith("zh");
+	const card = zh ? creditCardData.zh : creditCardData.en;
+	const secrets: readonly string[] = zh ? verticalSecrets.zh : verticalSecrets.en;
 
 	return (
 		<>
@@ -143,9 +251,7 @@ export function HomePage() {
 							</span>
 							{t("hero.titleEnd")}
 						</h1>
-						<p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-slate-600 dark:text-slate-400">
-							{t("hero.description")}
-						</p>
+						<HeroDescription />
 						<div className="mt-8 flex flex-wrap items-center justify-center gap-3">
 							<Link
 								to="/playground"
@@ -183,6 +289,81 @@ export function HomePage() {
 						</p>
 					</div>
 				</div>
+			</section>
+
+			{/* --------------------------- Credit card --------------------------- */}
+			<section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+				<div className="text-center">
+					<h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+						{t("creditCard.title")}
+					</h2>
+					<p className="mt-3 text-slate-500 dark:text-slate-400">{t("creditCard.subtitle")}</p>
+				</div>
+
+				<div className="mt-10 flex justify-center">
+					<div className="relative w-full max-w-[470px] overflow-hidden rounded-3xl border border-emerald-400/25 bg-gradient-to-br from-[#16242f] via-[#0e1822] to-[#090e14] p-7 shadow-2xl shadow-emerald-950/40">
+						<div
+							aria-hidden="true"
+							className="pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full bg-emerald-500/15 blur-3xl"
+						/>
+						<div
+							aria-hidden="true"
+							className="pointer-events-none absolute -bottom-24 -left-10 h-52 w-52 rounded-full bg-teal-400/10 blur-3xl"
+						/>
+
+						<div className="relative flex items-start justify-between">
+							<span className="font-mono text-sm font-semibold tracking-[0.25em] text-emerald-200/90">
+								{t("creditCard.brand")}
+							</span>
+							<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#6ee7b7" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+								<path d="M8.5 6.5a8 8 0 0 1 0 11" />
+								<path d="M12 4a11 11 0 0 1 0 16" />
+								<path d="M15.5 1.5a14 14 0 0 1 0 21" />
+							</svg>
+						</div>
+
+						<svg className="relative mt-6" width="46" height="34" viewBox="0 0 46 34" aria-hidden="true">
+							<defs>
+								<linearGradient id="card-chip" x1="0" y1="0" x2="1" y2="1">
+									<stop offset="0%" stopColor="#f5e08a" />
+									<stop offset="100%" stopColor="#c9a145" />
+								</linearGradient>
+							</defs>
+							<rect x="2" y="2" width="42" height="30" rx="7" fill="url(#card-chip)" />
+							<path d="M2 12h42M2 22h42M17 2v30M29 2v30" stroke="#8a6d2f" strokeOpacity="0.55" strokeWidth="1.2" />
+						</svg>
+
+						<div className="relative mt-6">
+							<p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-200/55">
+								{t("creditCard.numberLabel")}
+							</p>
+							<p className="mt-1.5 font-mono text-[22px] leading-relaxed tracking-[0.14em] text-white">
+								<BluffSpoiler particleColor="#6ee7b7" particleShape="diamond" particleBloom particleSize={1.5}>
+									{card.number}
+								</BluffSpoiler>
+							</p>
+						</div>
+
+						<div className="relative mt-6 grid grid-cols-3 gap-4">
+							<CardField label={t("creditCard.holderLabel")}>
+								<BluffSpoiler particleColor="#34d399" particleShape="circle" particleBloom>
+									{card.holder}
+								</BluffSpoiler>
+							</CardField>
+							<CardField label={t("creditCard.expiryLabel")}>
+								<BluffSpoiler particleColor="#a7f3d0" particleShape="square" particleBloom>
+									{card.expiry}
+								</BluffSpoiler>
+							</CardField>
+							<CardField label={t("creditCard.cvvLabel")}>
+								<BluffSpoiler particleColor="#fbbf24" particleShape="triangle" particleBloom>
+									{card.cvv}
+								</BluffSpoiler>
+							</CardField>
+						</div>
+					</div>
+				</div>
+				<p className="mt-5 text-center text-xs text-slate-400">{t("creditCard.hint")}</p>
 			</section>
 
 			{/* ----------------------------- Features ---------------------------- */}
@@ -250,6 +431,41 @@ export function HomePage() {
 				</div>
 			</section>
 
+			{/* ----------------------------- Vertical ---------------------------- */}
+			<section className="mx-auto max-w-4xl px-4 py-16 sm:px-6">
+				<div className="text-center">
+					<h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+						{t("vertical.title")}
+					</h2>
+					<p className="mt-3 text-slate-500 dark:text-slate-400">{t("vertical.subtitle")}</p>
+				</div>
+				<div className="mt-10 flex justify-center rounded-2xl border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-800 dark:bg-slate-900/50">
+					<div className="vertical-text demo-prose h-72 text-lg text-slate-700 dark:text-slate-300">
+						{(() => {
+							const pattern = new RegExp(`(${secrets.map(escapeRegExp).join("|")})`);
+							return t("vertical.paragraph")
+								.split(pattern)
+								.filter(Boolean)
+								.map((part, index) =>
+									secrets.includes(part)
+										? (
+											<BluffSpoiler
+												key={part}
+												particleColor={index % 2 ? "#f59e0b" : "#1fa669"}
+												particleShape={index % 2 ? "square" : "circle"}
+												particleBloom
+											>
+												{part}
+											</BluffSpoiler>
+										)
+										: part,
+								);
+						})()}
+					</div>
+				</div>
+				<p className="mt-4 text-center text-xs text-slate-400">{t("vertical.hint")}</p>
+			</section>
+
 			{/* ----------------------------- Wrapping ---------------------------- */}
 			<section className="mx-auto max-w-4xl px-4 py-16 sm:px-6">
 				<div className="text-center">
@@ -285,23 +501,33 @@ export function HomePage() {
 								});
 						})()}
 					</p>
+
+					{/* One long masked block that continuously spans three lines */}
+					<div className="mt-6 border-t border-slate-200 pt-6 dark:border-slate-800">
+						<div className="mx-auto max-w-md">
+							<p className="demo-prose text-slate-700 dark:text-slate-300">
+								{t("wrapping.longLead")}
+								<BluffSpoiler particleColor="#38bdf8" particleShape="circle" particleJitter={1.6}>
+									{t("wrapping.longSecret")}
+								</BluffSpoiler>
+								{t("wrapping.longTrail")}
+							</p>
+							<p className="mt-3 text-xs text-slate-400">{t("wrapping.longHint")}</p>
+						</div>
+					</div>
 				</div>
 			</section>
 
 			{/* ------------------------------ Install ---------------------------- */}
 			<section className="border-t border-slate-200/70 bg-white/60 py-16 dark:border-slate-800/70 dark:bg-slate-900/20">
-				<div className="mx-auto max-w-4xl px-4 sm:px-6">
+				<div className="mx-auto max-w-6xl px-4 sm:px-6">
 					<div className="text-center">
 						<h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
 							{t("install.title")}
 						</h2>
 						<p className="mt-3 text-slate-500 dark:text-slate-400">{t("install.subtitle")}</p>
 					</div>
-					<div className="mt-10 space-y-5">
-						<CodeBlock code={snippetImport} label="bash" language="bash" />
-						<CodeBlock code={snippetRegister} label="main.ts" language="ts" />
-						<CodeBlock code={snippetHtml} label="index.html" language="html" />
-					</div>
+					<FrameworkTabs />
 				</div>
 			</section>
 

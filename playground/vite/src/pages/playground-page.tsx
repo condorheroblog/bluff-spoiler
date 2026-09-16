@@ -147,14 +147,14 @@ export function PlaygroundPage() {
 								<button
 									type="button"
 									onClick={revealAll}
-									className="rounded-md bg-emerald-500 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-emerald-400"
+									className="cursor-pointer rounded-md bg-emerald-500 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-emerald-400"
 								>
 									{t("playground.revealAll")}
 								</button>
 								<button
 									type="button"
 									onClick={hideAll}
-									className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:border-slate-400 dark:border-slate-700 dark:text-slate-300"
+									className="cursor-pointer rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:border-slate-400 dark:border-slate-700 dark:text-slate-300"
 								>
 									{t("playground.hideAll")}
 								</button>
@@ -229,7 +229,7 @@ export function PlaygroundPage() {
 							<button
 								type="button"
 								onClick={() => setLogEntries([])}
-								className="rounded-md px-2 py-1 text-xs text-slate-400 transition hover:text-emerald-600 dark:hover:text-emerald-400"
+								className="cursor-pointer rounded-md px-2 py-1 text-xs text-slate-400 transition hover:text-emerald-600 dark:hover:text-emerald-400"
 							>
 								{t("playground.clear")}
 							</button>

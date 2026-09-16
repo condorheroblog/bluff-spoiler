@@ -19,7 +19,7 @@ export function LanguageToggle() {
 						type="button"
 						aria-pressed={active}
 						onClick={() => void i18n.changeLanguage(language)}
-						className={`rounded-md px-2 py-1 transition ${
+						className={`cursor-pointer rounded-md px-2 py-1 transition ${
 							active
 								? "bg-emerald-500 text-white shadow-sm"
 								: "text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400"
