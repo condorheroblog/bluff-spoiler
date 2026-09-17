@@ -118,10 +118,7 @@ export const zh = {
 			tabSolid: "Solid",
 			tabSvelte: "Svelte",
 			tabHtml: "HTML",
-			stepInstall: "安装依赖",
-			stepRegister: "注册组件（整个应用只需一次）",
-			stepUse: "在组件或页面中使用",
-			stepCdn: "无需构建：直接通过 CDN 引入",
+			usageTitle: "在任意框架中使用",
 			eventsTitle: "通过事件添加自定义业务逻辑",
 			eventsDescription:
 				"toggle 事件可取消，并携带即将进入的状态与触发来源（pointer、keyboard、api）。",

@@ -13,6 +13,7 @@ pnpm-debug.log*
 
 node_modules
 dist
+outputs
 content
 demo/dist
 coverage

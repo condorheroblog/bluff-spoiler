@@ -5,23 +5,15 @@ import { CodeBlock } from "./code-block";
 
 type MethodKey = "npm" | "cdn";
 type FrameworkKey = "react" | "vue" | "solid" | "svelte" | "html";
-type StepKey = "install" | "register" | "use" | "cdn";
 
-interface GuideBlock {
+interface UsageGuide {
 	file: string;
 	language: string;
-	step: StepKey;
 	code: string;
 }
 
 const methodOrder = ["npm", "cdn"] as const;
 const frameworkOrder = ["react", "vue", "solid", "svelte", "html"] as const;
-
-const stepNumber: Partial<Record<StepKey, number>> = {
-	install: 1,
-	register: 2,
-	use: 3,
-};
 
 function capitalize(value: string): string {
 	return `${value[0].toUpperCase()}${value.slice(1)}`;
@@ -80,86 +72,63 @@ yarn add bluff-spoiler
 # bun
 bun add bluff-spoiler`;
 
-function buildGuides(zh: boolean): Record<MethodKey, Record<FrameworkKey, GuideBlock[]>> {
+function buildCdnSnippet(zh: boolean): string {
+	return zh
+		? `<!-- 无需构建：引入后自动注册并立即运行 -->
+<script src="https://unpkg.com/bluff-spoiler"></script>
+
+<!-- 也可以使用 ESM 产物 -->
+<script type="module">
+  import "https://unpkg.com/bluff-spoiler/dist/index.mjs";
+</script>`
+		: `<!-- no build step: auto-registered and ready immediately -->
+<script src="https://unpkg.com/bluff-spoiler"></script>
+
+<!-- or use the ESM build -->
+<script type="module">
+  import "https://unpkg.com/bluff-spoiler/dist/index.mjs";
+</script>`;
+}
+
+function buildUsageGuides(zh: boolean): Record<FrameworkKey, UsageGuide> {
 	const cardNumber = zh ? "6222 0212 3456 7890" : "4242 4242 4242 4242";
 	const personName = zh ? "张三" : "Alice Wang";
 	const usernameLabel = zh ? "用户名" : "Username";
-	const registerOnce = zh ? "整个应用只需注册一次" : "register the element once for the whole app";
+	const registerOnce = zh
+		? "整个应用只需 import 一次，标签即可全局使用"
+		: "import once for the whole app, then the tag works everywhere";
 
 	return {
-		npm: {
-			react: [
-				{
-					file: "bash",
-					language: "bash",
-					step: "install",
-					code: installSnippet,
-				},
-				{
-					file: "main.tsx",
-					language: "tsx",
-					step: "register",
-					code: `// main.tsx —— ${registerOnce}
+		react: {
+			file: "main.tsx",
+			language: "tsx",
+			code: `// ${registerOnce}
 import "bluff-spoiler";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <App />
-  </StrictMode>,
-);`,
-				},
-				{
-					file: "BankCard.tsx",
-					language: "tsx",
-					step: "use",
-					code: `import { useRef } from "react";
-
-export function BankCard() {
-  const cardRef = useRef<HTMLElement>(null);
-
-  return (
     <bluff-spoiler
-      ref={cardRef}
       particle-color="#6ee7b7"
       particle-shape="diamond"
-      particle-size={1.5}
       particle-bloom
-      onToggle={(event: Event) => {
-        const detail = (event as CustomEvent<{ revealed: boolean }>).detail;
-        console.log(detail.revealed);
-      }}
+      onToggle={(event: Event) =>
+        console.log((event as CustomEvent).detail)
+      }
     >
       ${cardNumber}
     </bluff-spoiler>
-  );
-}`,
-				},
-			],
-			vue: [
-				{
-					file: "bash",
-					language: "bash",
-					step: "install",
-					code: installSnippet,
-				},
-				{
-					file: "main.ts",
-					language: "ts",
-					step: "register",
-					code: `// main.ts —— ${registerOnce}
-import { createApp } from "vue";
+  </StrictMode>,
+);`,
+		},
+		vue: {
+			file: "App.vue",
+			language: "vue",
+			code: `<script setup lang="ts">
+// ${registerOnce}
 import "bluff-spoiler";
-import App from "./App.vue";
 
-createApp(App).mount("#app");`,
-				},
-				{
-					file: "App.vue",
-					language: "vue",
-					step: "use",
-					code: `<script setup lang="ts">
 function onToggle(event: Event) {
   console.log((event as CustomEvent).detail);
 }
@@ -169,75 +138,40 @@ function onToggle(event: Event) {
   <bluff-spoiler
     particle-color="#34d399"
     particle-shape="circle"
-    particle-size="1.2"
     particle-bloom
     @toggle="onToggle"
   >
     ${cardNumber}
   </bluff-spoiler>
 </template>`,
-				},
-			],
-			solid: [
-				{
-					file: "bash",
-					language: "bash",
-					step: "install",
-					code: installSnippet,
-				},
-				{
-					file: "main.tsx",
-					language: "tsx",
-					step: "register",
-					code: `// main.tsx —— ${registerOnce}
+		},
+		solid: {
+			file: "main.tsx",
+			language: "tsx",
+			code: `// ${registerOnce}
 import "bluff-spoiler";
 import { render } from "solid-js/web";
-import App from "./App";
 
-render(() => <App />, document.getElementById("root")!);`,
-				},
-				{
-					file: "Secret.tsx",
-					language: "tsx",
-					step: "use",
-					code: `export function Secret() {
-  return (
+render(
+  () => (
     <bluff-spoiler
       particle-color="#34d399"
       particle-shape="diamond"
       particle-bloom
-      prop:particleSize={1.4}
       onToggle={(event: CustomEvent) => console.log(event.detail)}
     >
-      sensitive@example.com
+      ${cardNumber}
     </bluff-spoiler>
-  );
-}`,
-				},
-			],
-			svelte: [
-				{
-					file: "bash",
-					language: "bash",
-					step: "install",
-					code: installSnippet,
-				},
-				{
-					file: "main.ts",
-					language: "ts",
-					step: "register",
-					code: `// main.ts —— ${registerOnce}
-import "bluff-spoiler";
-import { mount } from "svelte";
-import App from "./App.svelte";
-
-mount(App, { target: document.getElementById("app")! });`,
-				},
-				{
-					file: "App.svelte",
-					language: "svelte",
-					step: "use",
-					code: `<script lang="ts">
+  ),
+  document.getElementById("root")!,
+);`,
+		},
+		svelte: {
+			file: "App.svelte",
+			language: "svelte",
+			code: `<script lang="ts">
+  // ${registerOnce}
+  import "bluff-spoiler";
   import { onMount } from "svelte";
 
   let el!: HTMLElement;
@@ -255,60 +189,20 @@ mount(App, { target: document.getElementById("app")! });`,
   particle-shape="square"
   particle-bloom
 >
-  138-0000-0000
+  ${cardNumber}
 </bluff-spoiler>`,
-				},
-			],
-			html: [
-				{
-					file: "bash",
-					language: "bash",
-					step: "install",
-					code: installSnippet,
-				},
-				{
-					file: "index.html",
-					language: "html",
-					step: "register",
-					code: `<!-- index.html — the bundler (Vite / webpack) resolves
-     the npm-installed package, pure HTML, no JS file needed -->
-<script type="module">
-  import "bluff-spoiler"; // registers <bluff-spoiler>
-</script>`,
-				},
-				{
-					file: "index.html",
-					language: "html",
-					step: "use",
-					code: `<!-- later in the same index.html -->
-<p>
-  ${usernameLabel}
-  <bluff-spoiler particle-shape="diamond" particle-bloom particle-color="#34d399">
-    ${personName}
-  </bluff-spoiler>
-</p>
-
-<script>
-  const el = document.querySelector("bluff-spoiler");
-  el.addEventListener("toggle", (event) => {
-    console.log(event.detail.revealed, event.detail.source);
-  });
-</script>`,
-				},
-			],
 		},
-
-		cdn: {
-			html: [
-				{
-					file: "index.html",
-					language: "html",
-					step: "cdn",
-					code: `<!doctype html>
+		html: {
+			file: "index.html",
+			language: "html",
+			code: `<!doctype html>
 <html>
   <head>
     <meta charset="utf-8" />
-    <script type="module" src="https://unpkg.com/bluff-spoiler@1/dist/index.iife.js"></script>
+    <!-- ${zh
+			? "纯 HTML：一个 script 标签即可，无需任何构建工具"
+			: "pure HTML: one script tag, no build tooling at all"} -->
+    <script src="https://unpkg.com/bluff-spoiler"></script>
   </head>
   <body>
     <p>
@@ -326,177 +220,6 @@ mount(App, { target: document.getElementById("app")! });`,
     </script>
   </body>
 </html>`,
-				},
-			],
-			react: [
-				{
-					file: "index.html",
-					language: "html",
-					step: "cdn",
-					code: `<div id="root"></div>
-
-<!-- import maps + htm: no bundler, JSX-free -->
-<script type="importmap">
-{
-  "imports": {
-    "react": "https://esm.sh/react@19",
-    "react-dom": "https://esm.sh/react-dom@19?external=react",
-    "react-dom/": "https://esm.sh/react-dom@19?external=react/",
-    "htm": "https://esm.sh/htm@3",
-    "bluff-spoiler": "https://esm.sh/bluff-spoiler@1"
-  }
-}
-</script>
-
-<script type="module">
-  import { createElement } from "react";
-  import { createRoot } from "react-dom/client";
-  import htm from "htm";
-  import "bluff-spoiler"; // registers <bluff-spoiler>
-
-  const html = htm.bind(createElement);
-
-  function App() {
-    return html\`
-      <bluff-spoiler
-        particle-color="#6ee7b7"
-        particle-shape="diamond"
-        particle-bloom
-        onToggle=\${(event) => console.log(event.detail)}
-      >
-        ${cardNumber}
-      </bluff-spoiler>
-    \`;
-  }
-
-  createRoot(document.getElementById("root")).render(html\`<\${App} />\`);
-</script>`,
-				},
-			],
-			vue: [
-				{
-					file: "index.html",
-					language: "html",
-					step: "cdn",
-					code: `<!doctype html>
-<html>
-  <head>
-    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-    <script src="https://unpkg.com/bluff-spoiler@1/dist/index.iife.js"></script>
-  </head>
-  <body>
-    <div id="app">
-      <bluff-spoiler
-        particle-color="#34d399"
-        particle-shape="circle"
-        particle-bloom
-        @toggle="onToggle"
-      >
-        ${cardNumber}
-      </bluff-spoiler>
-    </div>
-
-    <script>
-      const { createApp } = Vue;
-      const app = createApp({
-        methods: {
-          onToggle(event) {
-            console.log(event.detail);
-          },
-        },
-      });
-
-      // treat hyphenated tags as native custom elements
-      app.config.compilerOptions.isCustomElement = (tag) => tag.includes("-");
-      app.mount("#app");
-    </script>
-  </body>
-</html>`,
-				},
-			],
-			solid: [
-				{
-					file: "index.html",
-					language: "html",
-					step: "cdn",
-					code: `<div id="root"></div>
-
-<!-- import maps + solid-js/html: no bundler, JSX-free -->
-<script type="importmap">
-{
-  "imports": {
-    "solid-js": "https://esm.sh/solid-js@1.9",
-    "solid-js/web": "https://esm.sh/solid-js@1.9/web?external=solid-js",
-    "solid-js/html": "https://esm.sh/solid-js@1.9/html?external=solid-js",
-    "bluff-spoiler": "https://esm.sh/bluff-spoiler@1"
-  }
-}
-</script>
-
-<script type="module">
-  import { render } from "solid-js/web";
-  import html from "solid-js/html";
-  import "bluff-spoiler"; // registers <bluff-spoiler>
-
-  render(
-    () => html\`
-      <bluff-spoiler
-        particle-color="#34d399"
-        particle-shape="diamond"
-        particle-bloom
-        onToggle=\${(event) => console.log(event.detail)}
-      >
-        sensitive@example.com
-      </bluff-spoiler>
-    \`,
-    document.getElementById("root"),
-  );
-</script>`,
-				},
-			],
-			svelte: [
-				{
-					file: "index.html",
-					language: "html",
-					step: "cdn",
-					code: `<div id="app"></div>
-
-<!-- import maps + the Svelte compiler running in the browser -->
-<script type="importmap">
-{
-  "imports": {
-    "svelte": "https://esm.sh/svelte@5",
-    "svelte/compiler": "https://esm.sh/svelte@5/compiler",
-    "svelte/internal/client": "https://esm.sh/svelte@5/internal/client?external=svelte",
-    "bluff-spoiler": "https://esm.sh/bluff-spoiler@1"
-  }
-}
-</script>
-
-<script type="module">
-  import { compile } from "svelte/compiler";
-  import { mount } from "svelte";
-  import "bluff-spoiler"; // registers <bluff-spoiler>
-
-  // authored exactly like App.svelte
-  const source = \`
-    <bluff-spoiler
-      particle-color="#6ee7b7"
-      particle-shape="square"
-      particle-bloom
-    >
-      138-0000-0000
-    </bluff-spoiler>
-  \`;
-
-  const { js } = compile(source, { generate: "client", filename: "App.svelte" });
-  const url = URL.createObjectURL(new Blob([js.code], { type: "text/javascript" }));
-  const { default: App } = await import(url);
-
-  mount(App, { target: document.getElementById("app") });
-</script>`,
-				},
-			],
 		},
 	};
 }
@@ -504,19 +227,16 @@ mount(App, { target: document.getElementById("app")! });`,
 interface MethodTheme {
 	card: string;
 	iconChip: string;
-	tabActive: string;
 }
 
 const methodThemes: Record<MethodKey, MethodTheme> = {
 	npm: {
 		card: "hover:border-emerald-400/60 dark:hover:border-emerald-500/40",
 		iconChip: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-		tabActive: "bg-white text-emerald-700 shadow-sm dark:bg-slate-800 dark:text-emerald-400",
 	},
 	cdn: {
 		card: "hover:border-sky-400/60 dark:hover:border-sky-500/40",
 		iconChip: "bg-sky-500/10 text-sky-600 dark:text-sky-400",
-		tabActive: "bg-white text-sky-700 shadow-sm dark:bg-slate-800 dark:text-sky-400",
 	},
 };
 
@@ -540,13 +260,9 @@ function GlobeIcon() {
 	);
 }
 
-function MethodCard({ method, guides }: { method: MethodKey; guides: ReturnType<typeof buildGuides> }) {
+function DownloadCard({ method, code, label }: { method: MethodKey; code: string; label: string }) {
 	const { t } = useTranslation();
-	const [framework, setFramework] = useState<FrameworkKey>("react");
-	const frameworkTabs = useRovingTabs(frameworkOrder, framework, setFramework);
 	const theme = methodThemes[method];
-	const blocks = guides[method][framework];
-
 	const icon: ReactNode = method === "npm" ? <PackageIcon /> : <GlobeIcon />;
 
 	return (
@@ -567,70 +283,73 @@ function MethodCard({ method, guides }: { method: MethodKey; guides: ReturnType<
 				</div>
 			</header>
 
-			<div
-				role="tablist"
-				aria-label={t("install.frameworksAriaLabel")}
-				onKeyDown={frameworkTabs.onKeyDown}
-				className="mt-5 grid grid-cols-5 gap-1 rounded-xl border border-slate-200 bg-slate-100/70 p-1 dark:border-slate-800 dark:bg-slate-900/70"
-			>
-				{frameworkOrder.map((key) => {
-					const selected = framework === key;
-					return (
-						<button
-							key={key}
-							{...frameworkTabs.tabProps(key)}
-							type="button"
-							role="tab"
-							id={`fw-tab-${method}-${key}`}
-							aria-selected={selected}
-							aria-controls={`fw-panel-${method}`}
-							onClick={() => setFramework(key)}
-							className={`cursor-pointer rounded-lg px-1 py-2 text-[11px] font-semibold transition sm:text-xs ${
-								selected
-									? theme.tabActive
-									: "text-slate-500 hover:bg-white/60 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-800/60 dark:hover:text-slate-200"
-							}`}
-						>
-							{t(`install.tab${capitalize(key)}`)}
-						</button>
-					);
-				})}
-			</div>
-
-			<div
-				role="tabpanel"
-				id={`fw-panel-${method}`}
-				aria-labelledby={`fw-tab-${method}-${framework}`}
-				className="mt-5 flex-1 space-y-5"
-			>
-				{blocks.map((block, index) => (
-					<div key={`${method}-${framework}-${block.step}-${index}`}>
-						<p className="mb-2 flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
-							{stepNumber[block.step] !== undefined && (
-								<span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/10 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
-									{stepNumber[block.step]}
-								</span>
-							)}
-							{t(`install.step${capitalize(block.step)}`)}
-						</p>
-						<CodeBlock code={block.code} label={block.file} language={block.language} />
-					</div>
-				))}
+			<div className="mt-5 flex-1">
+				<CodeBlock code={code} label={label} language={method === "npm" ? "bash" : "html"} />
 			</div>
 		</article>
 	);
 }
 
 export function FrameworkTabs() {
-	const { i18n } = useTranslation();
+	const { t, i18n } = useTranslation();
 	const zh = Boolean(i18n.resolvedLanguage?.startsWith("zh"));
-	const guides = buildGuides(zh);
+	const [framework, setFramework] = useState<FrameworkKey>("react");
+	const frameworkTabs = useRovingTabs(frameworkOrder, framework, setFramework);
+	const guide = buildUsageGuides(zh)[framework];
 
 	return (
-		<div className="mt-10 grid items-start gap-5 sm:gap-6 lg:grid-cols-2">
-			{methodOrder.map(method => (
-				<MethodCard key={method} method={method} guides={guides} />
-			))}
+		<div className="mt-10 space-y-10">
+			{/* Download methods: two independent cards, no linkage */}
+			<div className="grid items-stretch gap-5 sm:gap-6 lg:grid-cols-2">
+				<DownloadCard method="npm" code={installSnippet} label="bash" />
+				<DownloadCard method="cdn" code={buildCdnSnippet(zh)} label="index.html" />
+			</div>
+
+			{/* Usage: a single tab group for ESM frameworks plus pure HTML */}
+			<div>
+				<h3 className="text-center text-sm font-semibold text-slate-700 dark:text-slate-200">
+					{t("install.usageTitle")}
+				</h3>
+
+				<div
+					role="tablist"
+					aria-label={t("install.frameworksAriaLabel")}
+					onKeyDown={frameworkTabs.onKeyDown}
+					className="mt-4 grid grid-cols-5 gap-1 rounded-xl border border-slate-200 bg-slate-100/70 p-1 dark:border-slate-800 dark:bg-slate-900/70"
+				>
+					{frameworkOrder.map((key) => {
+						const selected = framework === key;
+						return (
+							<button
+								key={key}
+								{...frameworkTabs.tabProps(key)}
+								type="button"
+								role="tab"
+								id={`usage-tab-${key}`}
+								aria-selected={selected}
+								aria-controls="usage-panel"
+								onClick={() => setFramework(key)}
+								className={`cursor-pointer rounded-lg px-1 py-2 text-[11px] font-semibold transition sm:text-xs ${
+									selected
+										? "bg-white text-emerald-700 shadow-sm dark:bg-slate-800 dark:text-emerald-400"
+										: "text-slate-500 hover:bg-white/60 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-800/60 dark:hover:text-slate-200"
+								}`}
+							>
+								{t(`install.tab${capitalize(key)}`)}
+							</button>
+						);
+					})}
+				</div>
+
+				<div
+					role="tabpanel"
+					id="usage-panel"
+					aria-labelledby={`usage-tab-${framework}`}
+					className="mt-5"
+				>
+					<CodeBlock code={guide.code} label={guide.file} language={guide.language} />
+				</div>
+			</div>
 		</div>
 	);
 }

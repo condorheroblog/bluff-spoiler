@@ -119,10 +119,7 @@ export const en = {
 			tabSolid: "Solid",
 			tabSvelte: "Svelte",
 			tabHtml: "HTML",
-			stepInstall: "Install the package",
-			stepRegister: "Register the element (once for the whole app)",
-			stepUse: "Use it in a component or page",
-			stepCdn: "No build step: load it straight from a CDN",
+			usageTitle: "Use it in any framework",
 			eventsTitle: "Custom business logic via events",
 			eventsDescription:
 				"The toggle event is cancelable and carries the next state plus its source (pointer, keyboard, api).",
