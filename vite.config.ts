@@ -1,6 +1,5 @@
 import type { Plugin } from "vite";
-import { copyFileSync, existsSync, readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import dts from "unplugin-dts/vite";
 import { defineConfig } from "vite";
@@ -17,28 +16,6 @@ const banner = `/**
  * License ${pkg.license} © 2026-Present
  */
 `;
-
-function copyDtsFiles(dir: string): void {
-	for (const entry of readdirSync(dir, { withFileTypes: true })) {
-		const fullPath = join(dir, entry.name);
-		if (entry.isDirectory()) {
-			copyDtsFiles(fullPath);
-			continue;
-		}
-
-		if (entry.name.endsWith(".d.mts")) {
-			copyFileSync(fullPath, fullPath.replace(/\.d\.mts$/, ".d.cts"));
-		}
-		else if (entry.name.endsWith(".d.ts")) {
-			const mtsPath = fullPath.replace(/\.d\.ts$/, ".d.mts");
-			const ctsPath = fullPath.replace(/\.d\.ts$/, ".d.cts");
-			if (!existsSync(mtsPath))
-				copyFileSync(fullPath, mtsPath);
-			if (!existsSync(ctsPath))
-				copyFileSync(fullPath, ctsPath);
-		}
-	}
-}
 
 // @zh 仅压缩 IIFE 浏览器直连产物；ES/CJS 产物保持可读，便于调试。
 // @en Minify only the IIFE browser-ready output; keep ES/CJS outputs readable.
@@ -88,9 +65,10 @@ export default defineConfig({
 		minifyIifeOnly(),
 		dts({
 			bundleTypes: true,
-			afterBuild: () => {
-				copyDtsFiles(fileURLToPath(new URL("./dist", import.meta.url)));
-			},
+			outDirs: [
+				{ dir: "dist", moduleFormat: "esm" },
+				{ dir: "dist", moduleFormat: "cjs" },
+			],
 		}),
 	],
 });
